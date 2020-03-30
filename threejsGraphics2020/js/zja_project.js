@@ -8,7 +8,14 @@
 let camera, scene, renderer;
 let cameraControls;
 let clock = new THREE.Clock();
-
+let targetXpos;
+let targetZpos;
+let cannonFire = new Audio("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/1627bc94bcb218591df39a6c49491c5511b7d23b/threejsGraphics2020/sound/Cannon_1.mp3");
+let gong = new Audio("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/6d7f44fa604c1a1f9c45b492f9e9ccb49b9a41c1/threejsGraphics2020/sound/Chinese-gong-sound.mp3");
+let groundTexture = new THREE.TextureLoader().load("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/baf145af301c872caf5e6e0bbd394c667fcbe962/threejsGraphics2020/Textures/ground.png");
+let brassTexture = new THREE.TextureLoader().load("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/6be358726ffae4861e3df391c30685712d905b54/threejsGraphics2020/Textures/brass.jpg");
+let steelTexture = new THREE.TextureLoader().load("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/ce1a257998f5c0d825b1edafd240d08604956e96/threejsGraphics2020/Textures/steel.jpg");
+let ballTexture = new THREE.TextureLoader().load("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/be2032c20670ec5bcbcdd141a2e4e60b8e92a61f/threejsGraphics2020/Textures/ball.jpg");
 
 //Object for defining variables
 var cannonObject = {
@@ -16,17 +23,30 @@ var cannonObject = {
     upDown: 45,
     velocity: 100,
     firing: false,
+    hit: false,
     xVelocity: 0,
     yVelocity: 0,
     zVelocity: 0,
 
     FIRE: function () {
+        
+        cannonFire.play(); //play sound of cannon firing.
+        
+        //below we compute the velocities in every direction.
         this.yVelocity = Math.sin(degreesToRadians(this.upDown)) * this.velocity;
-        this.zVelocity = Math.cos(degreesToRadians(this.upDown)) * Math.cos(degreesToRadians(this.sideToSide)) * this.velocity;
-        this.xVelocity = Math.cos(degreesToRadians(this.upDown)) * Math.sin(degreesToRadians(this.sideToSide)) * this.velocity;
+        this.zVelocity = Math.cos(degreesToRadians(this.upDown)) * Math.cos(degreesToRadians(-this.sideToSide)) * this.velocity; //inverting side to side to make it more intuitive to aim.
+        this.xVelocity = Math.cos(degreesToRadians(this.upDown)) * Math.sin(degreesToRadians(-this.sideToSide)) * this.velocity;
 
         this.firing = true;
+        this.hit = false;
 
+        createScene();
+    },
+
+    resetDefaults: function () {
+        this.sideToSide = 0;
+        this.upDown = 45;
+        this.velocity = 100;
         createScene();
     }
 };
@@ -35,8 +55,9 @@ var cannonObject = {
 const gui = new dat.GUI({ autoPlace: true });
 gui.add(cannonObject, 'sideToSide', -90, 90).listen().onChange(function (value) { createScene(); });
 gui.add(cannonObject, 'upDown', 0, 90).listen().onChange(function (value) { createScene(); });
-gui.add(cannonObject, 'velocity', 5, 500);
+gui.add(cannonObject, 'velocity', 5, 200);
 gui.add(cannonObject, 'FIRE');
+gui.add(cannonObject, 'resetDefaults');
 
 
 
@@ -46,7 +67,6 @@ function createScene() {
         scene.remove(scene.children[0]);
     }
 
-
     //loop for animating the system.
     var mainLoop = () => {
         requestAnimationFrame(mainLoop)
@@ -55,7 +75,16 @@ function createScene() {
             updater(ball);
         else {
             cannonObject.firing = false;
-            beep();
+            ball.position.y = -.01; //make sure ball is visible.
+
+            if (!cannonObject.hit) {
+                if (Math.sqrt((ball.position.x - targetXpos) * (ball.position.x - targetXpos) + (ball.position.z - targetZpos) * (ball.position.z - targetZpos)) <= 10) {
+
+                    gong.play(); //the victory noise!
+                    cannonObject.hit = true;
+                    randomizeTargetpos();
+                }
+            }
         }
     }
 
@@ -65,9 +94,15 @@ function createScene() {
     let cannon = createCannon();
     scene.add(cannon);
 
+    let target = createTarget();
+    target.position.x = targetXpos;
+    target.position.z = targetZpos;
+    scene.add(target);
+
     let ballGeom = new THREE.SphereGeometry(1);
-    let c = new THREE.Color(1, 1, 1);
-    let ballArgs = { color: c, transparent: false };
+    //let c = new THREE.Color(1, 1, 1);
+    //let ballArgs = { color: c, transparent: false };
+    let ballArgs = { map: ballTexture, side: THREE.DoubleSide };
     let ballMat = new THREE.MeshLambertMaterial(ballArgs);
     let ball = new THREE.Mesh(ballGeom, ballMat);
 
@@ -79,34 +114,54 @@ function createScene() {
     
     //create ligths.
     let sun = new THREE.PointLight(0xffffff, 1, 10000);
-    sun.position.set(0, 600, 0);
+    sun.position.set(-20, 600, 0);
     scene.add(sun);
 
     if (cannonObject.firing)
         mainLoop();
 }
 
-function beep() {
-    var snd = new Audio("data:audio/wav;base64,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qJrx4KOQjahZxWbcZgztj2c49nKmkId44S71j0c8eV9yDK6uPRzx5X18eDvjvQ6yKo9ZSS6l//8elePK/Lf//IInrOF/FvDoADYAGBMGb7FtErm5MXMlmPAJQVgWta7Zx2go+8xJ0UiCb8LHHdftWyLJE0QIAIsI+UbXu67dZMjmgDGCGl1H+vpF4NSDckSIkk7Vd+sxEhBQMRU8j/12UIRhzSaUdQ+rQU5kGeFxm+hb1oh6pWWmv3uvmReDl0UnvtapVaIzo1jZbf/pD6ElLqSX+rUmOQNpJFa/r+sa4e/pBlAABoAAAAA3CUgShLdGIxsY7AUABPRrgCABdDuQ5GC7DqPQCgbbJUAoRSUj+NIEig0YfyWUho1VBBBA//uQZB4ABZx5zfMakeAAAAmwAAAAF5F3P0w9GtAAACfAAAAAwLhMDmAYWMgVEG1U0FIGCBgXBXAtfMH10000EEEEEECUBYln03TTTdNBDZopopYvrTTdNa325mImNg3TTPV9q3pmY0xoO6bv3r00y+IDGid/9aaaZTGMuj9mpu9Mpio1dXrr5HERTZSmqU36A3CumzN/9Robv/Xx4v9ijkSRSNLQhAWumap82WRSBUqXStV/YcS+XVLnSS+WLDroqArFkMEsAS+eWmrUzrO0oEmE40RlMZ5+ODIkAyKAGUwZ3mVKmcamcJnMW26MRPgUw6j+LkhyHGVGYjSUUKNpuJUQoOIAyDvEyG8S5yfK6dhZc0Tx1KI/gviKL6qvvFs1+bWtaz58uUNnryq6kt5RzOCkPWlVqVX2a/EEBUdU1KrXLf40GoiiFXK///qpoiDXrOgqDR38JB0bw7SoL+ZB9o1RCkQjQ2CBYZKd/+VJxZRRZlqSkKiws0WFxUyCwsKiMy7hUVFhIaCrNQsKkTIsLivwKKigsj8XYlwt/WKi2N4d//uQRCSAAjURNIHpMZBGYiaQPSYyAAABLAAAAAAAACWAAAAApUF/Mg+0aohSIRobBAsMlO//Kk4soosy1JSFRYWaLC4qZBYWFRGZdwqKiwkNBVmoWFSJkWFxX4FFRQWR+LsS4W/rFRb/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZGUAAAAAAAAAACU=");
-    snd.play();
-}
 
 //Creates floor mesh for scene.
 function createFloor() {
-    let geom = new THREE.BoxGeometry(5000, .1, 5000);
-    let c = new THREE.Color(0, .8, 0);
-    let args = { color: c, transparent: false };
+    let geom = new THREE.BoxGeometry(800, .1, 800);
+    //let c = new THREE.Color(0, .5, 0);
+    //let args = { color: c, transparent: false };
+    //let args = { map: groundTexture, specular: 0xFF9999, shininess: 1 };
+    let args = { map: groundTexture, side: THREE.DoubleSide };
     let mat = new THREE.MeshLambertMaterial(args);
+    //let mat = new THREE.MeshPhongMaterial(args);
     let floor = new THREE.Mesh(geom, mat);
     return floor;
 }
 
+//create target
+function createTarget() {
+    let geom = new THREE.CylinderGeometry(10, 10, .1, 32);
+    //let c = new THREE.Color(0.5, 0.4, 0);
+    //let args = { color: c, transparent: false };
+    let args = { map: brassTexture, side: THREE.DoubleSide };
+    let mat = new THREE.MeshLambertMaterial(args);
+    let mesh = new THREE.Mesh(geom, mat);
+    mesh.position.y = 0.05; //make sure it is visible above the ground.
+    return mesh;
+}
 
+//randomizes target position.
+function randomizeTargetpos() {
+    targetXpos = Math.random() * 300 - 150;
+    targetZpos = Math.random() * 300 + 60;
+}
+
+//creates cannon
 function createCannon() {
     let root = new THREE.Object3D();
     let baseGeom = new THREE.CylinderGeometry(5, 5, 2, 32);
-    let c = new THREE.Color(0.1, 0.1, 0.1);
-    let cannonArgs = { color: c, transparent: false };
+    //let c = new THREE.Color(0.1, 0.1, 0.1);
+    //let cannonArgs = { color: c, transparent: false };
+
+    let cannonArgs = { map: steelTexture, side: THREE.DoubleSide };
+
     let cannonMat = new THREE.MeshLambertMaterial(cannonArgs);
     let baseMesh = new THREE.Mesh(baseGeom, cannonMat);
     baseMesh.position.x = 0;
@@ -129,7 +184,7 @@ function createCannon() {
     barrelMesh.rotation.x = Math.PI / 2; //start on side so the barrel lifts with more degrees.
     barrelMesh.rotation.x -= degreesToRadians(cannonObject.upDown);
     root.add(barrelMesh);
-    root.rotation.y = degreesToRadians(cannonObject.sideToSide);
+    root.rotation.y = degreesToRadians(-cannonObject.sideToSide); //inverting this to make it more intuitive to aim.
 
     return root;
 }
@@ -137,7 +192,7 @@ function createCannon() {
 
 //update positions for animation.
 function updater(ball) {
-    let delta = clock.getDelta() * 5; //multiplying by 5 to make it move faster.
+    let delta = clock.getDelta() * 10.0; //multiplying by 10 to make it move faster.
 
     //move ball.
     ball.position.x += delta * cannonObject.xVelocity;
@@ -169,6 +224,19 @@ function init() {
     let canvasWidth = window.innerWidth;
     let canvasHeight = window.innerHeight;
     let canvasRatio = canvasWidth / canvasHeight;
+    randomizeTargetpos();
+
+    //set texture repeats and wrappings
+    groundTexture.wrapS = THREE.RepeatWrapping;
+    groundTexture.wrapT = THREE.RepeatWrapping;
+    groundTexture.repeat.set(10, 10);
+
+    steelTexture.wrapS = THREE.RepeatWrapping;
+    steelTexture.wrapT = THREE.RepeatWrapping;
+    steelTexture.repeat.set(4, 4);
+
+    ballTexture.wrapS = THREE.ClampToEdgeWrapping;
+    ballTexture.wrapT = THREE.ClampToEdgeWrapping;
 
     scene = new THREE.Scene();
 
