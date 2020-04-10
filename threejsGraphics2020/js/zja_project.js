@@ -12,7 +12,7 @@ let targetXpos;
 let targetZpos;
 let cannonFire = new Audio("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/1627bc94bcb218591df39a6c49491c5511b7d23b/threejsGraphics2020/sound/Cannon_1.mp3");
 let gong = new Audio("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/6d7f44fa604c1a1f9c45b492f9e9ccb49b9a41c1/threejsGraphics2020/sound/Chinese-gong-sound.mp3");
-let groundTexture = new THREE.TextureLoader().load("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/baf145af301c872caf5e6e0bbd394c667fcbe962/threejsGraphics2020/Textures/ground.png");
+let groundTexture = new THREE.TextureLoader().load("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/71467206d4b709c247dfb702bd999dd0372ff655/threejsGraphics2020/Textures/ground.png");
 let brassTexture = new THREE.TextureLoader().load("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/6be358726ffae4861e3df391c30685712d905b54/threejsGraphics2020/Textures/brass.jpg");
 let steelTexture = new THREE.TextureLoader().load("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/ce1a257998f5c0d825b1edafd240d08604956e96/threejsGraphics2020/Textures/steel.jpg");
 let ballTexture = new THREE.TextureLoader().load("https://rawcdn.githack.com/ZachAnthony245/zachscode.github.io/be2032c20670ec5bcbcdd141a2e4e60b8e92a61f/threejsGraphics2020/Textures/ball.jpg");
